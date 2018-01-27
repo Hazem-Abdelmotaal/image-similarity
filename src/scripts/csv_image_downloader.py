@@ -13,39 +13,65 @@ def csv_images(csv_path):
       yield {'id': row['id_1'], 'url': row['img_1']}
 
 
+def files_in(directory):
+  # def test(filename):
+  #   for end in ['.png', '.jpg', '.jpeg', '.gif', '.html']:
+  #     if filename.endswith(end):
+  #       return True
+  #   return False
+
+  files = set()
+  for filename in os.listdir(directory):
+    # if test(filename):
+    image_id = filename.split('.')[0]
+    files.add(image_id)
+
+  return files
+
+
+def uniq_images(images):
+  visited = set()
+  for img in images:
+    if img['id'] not in visited:
+      visited.add(img['id'])
+      yield img
+
+
 def save_image(image, directory):
   try:
     filename = directory + '/' + image['id']
-    if not (os.path.isfile(filename + '.png') or os.path.isfile(filename + '.jpeg')):
-      _, h = urllib.urlretrieve(image['url'], filename)
-      f_type = h['Content-Type'].split('/')[1]
+    _, h = urllib.urlretrieve(image['url'], filename)
+    f_type = h['Content-Type'].split('/')[1]
 
-      if 'html' in f_type:
-        os.remove(filename)
-      else:
-        os.rename(filename, filename + '.' + f_type)
-        print('Image saved: ' + filename + '.' + f_type)
+    if 'html' in f_type:
+      with open(filename, 'w') as the_file:
+        the_file.write('')
+      print('not found')
     else:
-      print('next')
+      os.rename(filename, filename + '.' + f_type)
+      print('Image saved: ' + filename + '.' + f_type)
   except Exception as e:
     print("Could not download url: " + image['url'])
     print(e)
 
 
-def save_images(images, directory):
-  vissited = set()
-  for i,image in enumerate(images):
-    print(i, end=': ')
-    if image['id'] not in vissited:
-      save_image(image, dst)
-      vissited.add(image['id'])
-    else:
-      print('vissited')
+def images():
+  raw_images = files_in('./data/raw-images')
+  transformed_images = files_in('./data/images')
+  downloaded_images = raw_images | transformed_images
+
+  for img in uniq_images(csv_images('./data/image_pairs_filtered.csv')):
+    if img['id'] not in downloaded_images:
+      yield img
 
 
 if __name__ == '__main__':
-  images = csv_images('./data/image_pairs.csv')
-  dst = './data/raw-images'
+  from multiprocessing import Pool
 
-  save_images(images, dst)
+  def save_images_to_dst(images):
+    save_image(images, './data/raw-images')
 
+  p = Pool(4)
+  print('Start')
+  p.map(save_images_to_dst, images())
+  print('Done')
