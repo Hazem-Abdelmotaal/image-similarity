@@ -2,8 +2,10 @@ from __future__ import print_function
 import csv
 import urllib
 import os
-import time
 
+
+RAW_IMAGES = './data/raw-images'
+IMAGES = './data/images'
 
 def csv_images(csv_path):
   with open(csv_path, 'r') as csvfile:
@@ -38,6 +40,10 @@ def uniq_images(images):
 
 
 def save_image(image, directory):
+  if len(image['id']) < 5:
+      print("ID ERROR")
+      return
+
   try:
     filename = directory + '/' + image['id']
     _, h = urllib.urlretrieve(image['url'], filename)
@@ -56,8 +62,8 @@ def save_image(image, directory):
 
 
 def images():
-  raw_images = files_in('./data/raw-images')
-  transformed_images = files_in('./data/images')
+  raw_images = files_in(RAW_IMAGES)
+  transformed_images = files_in(IMAGES)
   downloaded_images = raw_images | transformed_images
 
   for img in uniq_images(csv_images('./data/image_pairs_filtered.csv')):
@@ -69,9 +75,9 @@ if __name__ == '__main__':
   from multiprocessing import Pool
 
   def save_images_to_dst(images):
-    save_image(images, './data/raw-images')
+    save_image(images, RAW_IMAGES)
 
-  p = Pool(4)
+  p = Pool(8)
   print('Start')
   p.map(save_images_to_dst, images())
   print('Done')
