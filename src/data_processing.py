@@ -4,6 +4,7 @@ from functools import wraps
 import pandas as pd
 import numpy as np
 from keras.preprocessing.image import load_img, img_to_array
+from keras.applications.vgg16 import preprocess_input
 
 
 def cache_pd(path):
@@ -67,7 +68,7 @@ def generate_batch_fake(true_set, false_set, batch_size=32):
 
 
 def id_to_jpg(img_id, directory):
-    return img_to_array(load_img(directory + img_id + ".jpg")) / 255
+    return img_to_array(load_img(directory + img_id + ".jpg"))
 
 
 def row_to_img_pair(row, directory):
@@ -79,6 +80,16 @@ def row_to_img_pair(row, directory):
     return [img_0, img_1], label
 
 
+def pair_augmentation(left, right):
+    # - left right
+    # - left_horizontal right
+    # - left righ_horizontal
+    new_left = [left, np.flip(left, axis=1), left]
+    new_right = [right, right, np.flip(right, axis=1)]
+
+    return new_left, new_right
+
+
 def df_to_img_pair(dataframe, directory):
     images_a = []
     images_b = []
@@ -87,10 +98,13 @@ def df_to_img_pair(dataframe, directory):
     for i, row in dataframe.iterrows():
         try:
             pair, label = row_to_img_pair(row, directory)
-            images_a.append(pair[0])
-            images_b.append(pair[1])
-            labels.append(label)
+            aug_pairs = pair_augmentation(*pair)
+            images_a += aug_pairs[0]
+            images_b += aug_pairs[1]
+            labels += [label] * len(aug_pairs[0])
         except:  # TODO: setexcetion type
             pass
 
-    return [np.array(images_a), np.array(images_b)], np.array(labels)
+    return [
+        preprocess_input(np.array(images_a), mode='tf'),
+        preprocess_input(np.array(images_b), mode='tf')], np.array(labels)
